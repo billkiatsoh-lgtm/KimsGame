@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kim's Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e0d;
+    --surface: #1a1a18;
+    --surface2: #242422;
+    --gold: #c9a84c;
+    --gold-light: #e8cb80;
+    --cream: #f0ead6;
+    --muted: #6b6b60;
+    --danger: #c0392b;
+    --success: #1a6b4a;
+    --success-bg: #0d2e20;
+    --danger-bg: #2e0d0d;
+    --border: rgba(201,168,76,0.18);
+    --border-light: rgba(201,168,76,0.35);
+    --text: #f0ead6;
+    --text-muted: #8a8a78;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Decorative background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .crown {
+    font-size: 28px;
+    margin-bottom: 0.5rem;
+    display: block;
+    filter: drop-shadow(0 0 12px rgba(201,168,76,0.5));
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  header p {
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stage-indicators {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+
+  .stage-dot {
+    width: 32px;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    transition: background 0.4s;
+  }
+  .stage-dot.active { background: var(--gold); }
+  .stage-dot.done { background: var(--gold-light); opacity: 0.5; }
+
+  /* Screens */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeUp 0.4s ease both; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Timer */
+  .timer-wrap {
+    margin-bottom: 1.5rem;
+  }
+
+  .timer-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .timer-label {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .timer-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--gold);
+    transition: color 0.3s;
+  }
+
+  .timer-count.danger { color: #e74c3c; }
+
+  .timer-track {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .timer-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: width 1s linear, background 0.4s;
+  }
+  .timer-fill.danger { background: #e74c3c; }
+
+  /* Objects grid */
+  .objects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .object-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 8px 10px;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+    animation: popIn 0.3s ease both;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.88); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .object-emoji {
+    font-size: 26px;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .object-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* Answer buttons */
+  .answers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .ans-btn {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ans-btn:hover { border-color: var(--border-light); color: var(--text); background: var(--surface2); }
+  .ans-btn.selected { border: 1.5px solid var(--gold); color: var(--gold-light); background: rgba(201,168,76,0.08); }
+  .ans-btn.correct { border-color: #1a6b4a; color: #4ecb8e; background: var(--success-bg); }
+  .ans-btn.wrong { border-color: #6b1a1a; color: #e87272; background: var(--danger-bg); }
+  .ans-btn.missed { border-color: #4a4a30; color: #a0a060; background: #1e1e10; }
+
+  .ans-emoji { font-size: 20px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: #0e0e0d;
+  }
+  .btn-primary:hover { background: var(--gold-light); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 0.5px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--border-light); color: var(--text); }
+
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Input */
+  .field-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .text-input {
+    width: 100%;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 1.5rem;
+  }
+
+  .text-input:focus { border-color: var(--gold); }
+  .text-input::placeholder { color: var(--muted); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .score-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .score-sub {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Stage badge */
+  .stage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201,168,76,0.1);
+    border: 0.5px solid var(--border-light);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    margin-bottom: 1.25rem;
+  }
+
+  /* Section title */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 1rem;
+  }
+
+  /* Leaderboard */
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px;
+  }
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    width: 20px;
+    text-align: center;
+  }
+
+  .lb-rank.gold { color: var(--gold); font-weight: 500; }
+
+  .lb-name {
+    flex: 1;
+    color: var(--cream);
+    font-weight: 400;
+  }
+
+  .lb-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gold);
+  }
+
+  .lb-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    padding: 1rem 0;
+  }
+
+  /* Intro stage list */
+  .stage-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 2rem;
+  }
+
+  .stage-tile {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stage-tile-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--gold-light);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stage-tile-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+  }
+
+  .miss-alert {
+    background: rgba(201,168,76,0.06);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.8;
+  }
+
+  .miss-alert strong { color: var(--cream); font-weight: 500; }
+
+  .flex-row { display: flex; gap: 10px; align-items: center; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+  .row-gap { margin-bottom: 1.5rem; }
+
+  footer {
+    text-align: center;
+    padding: 2rem 0 3rem;
+    border-top: 0.5px solid var(--border);
+    margin-top: 2rem;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+  }
+
+  /* Pulse on memorise screen */
+  .pulse-ring {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    margin-right: 6px;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .breakdown-tile {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .breakdown-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--gold-light);
+  }
+
+  .breakdown-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <span class="crown">♛</span>
+    <h1>Kim's Game</h1>
+    <p>A test of observation &amp; memory</p>
+    <div class="stage-indicators">
+      <div class="stage-dot" id="dot-0"></div>
+      <div class="stage-dot" id="dot-1"></div>
+      <div class="stage-dot" id="dot-2"></div>
+    </div>
+  </header>
+
+  <!-- START -->
+  <div id="start-screen" class="screen active">
+    <div class="section-title">How to play</div>
+    <div class="stage-list">
+      <div class="stage-tile"><div class="stage-tile-num">10</div><div class="stage-tile-label">Stage I</div></div>
+      <div class="stage-tile"><div class="stage-tile-num">15</div><div class="stage-tile-label">Stage II</div></div>
+      <div class="stage-tile"><div class="stage-tile-num">20</div><div class="stage-tile-label">Stage III</div></div>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.8;">
+      A tray of objects will be shown for <strong style="color:var(--cream)">20 seconds</strong>. Study them carefully. Then recall as many as you can in <strong style="color:var(--cream)">20 seconds</strong>. Wrong guesses deduct points — choose wisely.
+    </p>
+    <label class="field-label" for="player-name">Your name</label>
+    <input type="text" id="player-name" class="text-input" placeholder="Enter your name..." maxlength="24" />
+    <button class="btn btn-primary" onclick="startGame()" style="width:100%;justify-content:center;">Begin →</button>
+
+    <div style="margin-top:2.5rem;">
+      <div class="section-title">Leaderboard</div>
+      <div class="card">
+        <div id="lb-home"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMORISE -->
+  <div id="memorise-screen" class="screen">
+    <div class="flex-between row-gap">
+      <div class="stage-badge" id="mem-stage-badge">
+        <span class="pulse-ring"></span> Stage I — Memorise
+      </div>
+    </div>
+    <div class="timer-wrap">
+      <div class="timer-meta">
+        <span class="timer-label">Time remaining</span>
+        <span class="timer-count" id="mem-count">20</span>
+      </div>
+      <div class="timer-track"><div class="timer-fill" id="mem-bar" style="width:100%"></div></div>
+    </div>
+    <div class="objects-grid" id="objects-grid"></div>
+  </div>
+
+  <!-- RECALL -->
+  <div id="recall-screen" class="screen">
+    <div class="flex-between row-gap">
+      <div class="stage-badge" id="recall-stage-badge">Stage I — Recall</div>
+    </div>
+    <div class="timer-wrap">
+      <div class="timer-meta">
+        <span class="timer-label">Time to answer</span>
+        <span class="timer-count" id="recall-count">20</span>
+      </div>
+      <div class="timer-track"><div class="timer-fill" id="recall-bar" style="width:100%"></div></div>
+    </div>
+    <div class="answers-grid" id="answers-grid"></div>
+    <button class="btn btn-primary" id="submit-btn" onclick="submitAnswers()" style="width:100%;justify-content:center;">Submit answers</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-screen" class="screen">
+    <div class="stage-badge" id="result-badge" style="margin-bottom:1.25rem;">Stage I result</div>
+    <div class="card flex-between" style="margin-bottom:1rem;">
+      <div>
+        <div class="score-sub" style="margin-bottom:6px;">Stage score</div>
+        <div class="score-big" id="stage-score-display">0</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="score-sub" style="margin-bottom:6px;">Possible</div>
+        <div style="font-size:1.5rem;font-family:'Playfair Display',serif;color:var(--text-muted);" id="stage-total-display">10</div>
+      </div>
+    </div>
+    <div id="miss-section"></div>
+    <div class="section-title" style="font-size:15px;margin-bottom:0.75rem;">Review</div>
+    <div class="answers-grid" id="result-answers"></div>
+    <button class="btn btn-primary" id="next-btn" onclick="nextStage()" style="width:100%;justify-content:center;margin-top:0.5rem;">Next stage →</button>
+  </div>
+
+  <!-- FINAL -->
+  <div id="final-screen" class="screen">
+    <div class="section-title">Game complete</div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="score-sub" style="margin-bottom:6px;">Total score</div>
+      <div class="score-big" id="total-score-display">0 / 45</div>
+      <div class="score-sub" style="margin-top:8px;" id="score-verdict"></div>
+    </div>
+    <div class="breakdown-grid" id="breakdown-grid"></div>
+    <div class="section-title">Leaderboard</div>
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div id="lb-final"></div>
+    </div>
+    <button class="btn btn-primary" onclick="resetGame()" style="width:100%;justify-content:center;">Play again</button>
+  </div>
+
+</div><!-- /container -->
+
+<footer>Kim's Game &mdash; a classic memory exercise</footer>
+
+<script>
+const ALL_OBJECTS = [
+  {name:"apple",emoji:"🍎"},{name:"key",emoji:"🔑"},{name:"scissors",emoji:"✂️"},
+  {name:"pen",emoji:"🖊️"},{name:"coin",emoji:"🪙"},{name:"candle",emoji:"🕯️"},
+  {name:"ring",emoji:"💍"},{name:"comb",emoji:"🪮"},{name:"ruler",emoji:"📏"},
+  {name:"watch",emoji:"⌚"},{name:"button",emoji:"🔘"},{name:"paperclip",emoji:"📎"},
+  {name:"marble",emoji:"🔵"},{name:"eraser",emoji:"🧽"},{name:"feather",emoji:"🪶"},
+  {name:"spoon",emoji:"🥄"},{name:"thimble",emoji:"🧵"},{name:"magnet",emoji:"🧲"},
+  {name:"cork",emoji:"🍾"},{name:"needle",emoji:"🪡"},{name:"shell",emoji:"🐚"},
+  {name:"dice",emoji:"🎲"},{name:"badge",emoji:"📛"},{name:"lens",emoji:"🔍"},
+  {name:"battery",emoji:"🔋"},{name:"crystal",emoji:"💎"},{name:"acorn",emoji:"🌰"},
+  {name:"hook",emoji:"🪝"},{name:"stamp",emoji:"📮"},{name:"bolt",emoji:"⚡"},
+  {name:"whistle",emoji:"🎵"},{name:"compass",emoji:"🧭"},{name:"leaf",emoji:"🍃"},
+  {name:"bead",emoji:"🔮"},{name:"pin",emoji:"📌"}
+];
+
+const STAGES = [10, 15, 20];
+const TOTAL = 45;
+const STAGE_NAMES = ["I","II","III"];
+
+let state = {
+  playerName:"",stage:0,stageObjects:[],allStageObjects:[],
+  selected:new Set(),scores:[],timer:null
+};
+
+function shuffle(arr){return[...arr].sort(()=>Math.random()-0.5);}
+
+function getLeaderboard(){
+  try{return JSON.parse(localStorage.getItem("kimsgame_lb")||"[]");}catch{return[];}
+}
+function saveLeaderboard(lb){
+  try{localStorage.setItem("kimsgame_lb",JSON.stringify(lb));}catch{}
+}
+
+function updateDots(){
+  STAGES.forEach((_,i)=>{
+    const d=document.getElementById("dot-"+i);
+    d.className="stage-dot";
+    if(i<state.stage)d.classList.add("done");
+    else if(i===state.stage)d.classList.add("active");
+  });
+}
+
+function renderLeaderboard(id){
+  const lb=getLeaderboard().sort((a,b)=>b.score-a.score).slice(0,8);
+  const el=document.getElementById(id);
+  if(!lb.length){el.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';return;}
+  el.innerHTML=lb.map((e,i)=>`<div class="lb-row">
+    <span class="lb-rank ${i===0?'gold':''}">${i===0?'♛':i+1}</span>
+    <span class="lb-name">${e.name}</span>
+    <span class="lb-score">${e.score}/${TOTAL}</span>
+  </div>`).join("");
+}
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>{s.classList.remove("active");});
+  document.getElementById(id).classList.add("active");
+}
+
+function startGame(){
+  const n=document.getElementById("player-name").value.trim();
+  state.playerName=n||"Anonymous";
+  state.stage=0;state.scores=[];
+  const pool=shuffle(ALL_OBJECTS);let used=0;
+  state.allStageObjects=STAGES.map(n=>{const s=pool.slice(used,used+n);used+=n;return s;});
+  updateDots();
+  beginStage();
+}
+
+function beginStage(){
+  state.stageObjects=state.allStageObjects[state.stage];
+  state.selected=new Set();
+  const sn=STAGE_NAMES[state.stage];
+  document.getElementById("mem-stage-badge").innerHTML=`<span class="pulse-ring"></span> Stage ${sn} — Memorise`;
+  const grid=document.getElementById("objects-grid");
+  grid.innerHTML=state.stageObjects.map((o,i)=>`<div class="object-card" style="animation-delay:${i*0.04}s">
+    <span class="object-emoji">${o.emoji}</span>
+    <span class="object-name">${o.name}</span>
+  </div>`).join("");
+  show("memorise-screen");
+  startTimer("mem-bar","mem-count",20,()=>startRecall());
+}
+
+function startTimer(barId,countId,secs,onEnd){
+  clearInterval(state.timer);
+  let left=secs;
+  const bar=document.getElementById(barId);
+  const count=document.getElementById(countId);
+  bar.className="timer-fill";bar.style.width="100%";
+  count.className="timer-count";count.textContent=left;
+  state.timer=setInterval(()=>{
+    left--;
+    count.textContent=left;
+    bar.style.width=(left/secs*100)+"%";
+    if(left<=5){bar.classList.add("danger");count.classList.add("danger");}
+    if(left<=0){clearInterval(state.timer);onEnd();}
+  },1000);
+}
+
+function startRecall(){
+  const sn=STAGE_NAMES[state.stage];
+  document.getElementById("recall-stage-badge").textContent=`Stage ${sn} — Recall`;
+  const distractors=shuffle(ALL_OBJECTS).filter(o=>!state.stageObjects.find(s=>s.name===o.name)).slice(0,12);
+  const choices=shuffle([...state.stageObjects,...distractors]);
+  const grid=document.getElementById("answers-grid");
+  grid.innerHTML=choices.map(o=>`<button class="ans-btn" data-name="${o.name}" onclick="toggleAns(this)">
+    <span class="ans-emoji">${o.emoji}</span>${o.name}
+  </button>`).join("");
+  document.getElementById("submit-btn").disabled=false;
+  show("recall-screen");
+  startTimer("recall-bar","recall-count",20,()=>submitAnswers());
+}
+
+function toggleAns(btn){
+  const n=btn.dataset.name;
+  if(state.selected.has(n)){state.selected.delete(n);btn.classList.remove("selected");}
+  else{state.selected.add(n);btn.classList.add("selected");}
+}
+
+function submitAnswers(){
+  clearInterval(state.timer);
+  document.getElementById("submit-btn").disabled=true;
+  const correct=state.stageObjects.filter(o=>state.selected.has(o.name));
+  const wrong=[...state.selected].filter(n=>!state.stageObjects.find(o=>o.name===n));
+  const missed=state.stageObjects.filter(o=>!state.selected.has(o.name));
+  const score=Math.max(0,correct.length-wrong.length);
+  state.scores.push({correct:correct.length,wrong:wrong.length,score,total:state.stageObjects.length});
+
+  const sn=STAGE_NAMES[state.stage];
+  document.getElementById("result-badge").textContent=`Stage ${sn} result`;
+  document.getElementById("stage-score-display").textContent=score;
+  document.getElementById("stage-total-display").textContent=state.stageObjects.length;
+
+  if(missed.length){
+    document.getElementById("miss-section").innerHTML=`<div class="miss-alert"><strong>You missed:</strong> ${missed.map(o=>o.emoji+" "+o.name).join("  ·  ")}</div>`;
+  } else {
+    document.getElementById("miss-section").innerHTML=`<div class="miss-alert" style="color:#4ecb8e;border-color:#1a6b4a;">Perfect recall on this stage!</div>`;
+  }
+
+  const ra=document.getElementById("result-answers");
+  const correctCards=state.stageObjects.map(o=>`<div class="ans-btn ${state.selected.has(o.name)?'correct':'missed'}"><span class="ans-emoji">${o.emoji}</span>${o.name}</div>`);
+  const wrongCards=wrong.map(n=>{const obj=ALL_OBJECTS.find(o=>o.name===n);return`<div class="ans-btn wrong"><span class="ans-emoji">${obj?obj.emoji:""}</span>${n}</div>`;});
+  ra.innerHTML=[...correctCards,...wrongCards].join("");
+
+  const nextBtn=document.getElementById("next-btn");
+  if(state.stage<2){nextBtn.textContent="Next stage →";}
+  else{nextBtn.textContent="See final score";}
+  show("result-screen");
+}
+
+function nextStage(){
+  state.stage++;
+  updateDots();
+  if(state.stage<3){beginStage();}else{showFinal();}
+}
+
+function showFinal(){
+  const total=state.scores.reduce((a,b)=>a+b.score,0);
+  document.getElementById("total-score-display").textContent=`${total} / ${TOTAL}`;
+  const pct=total/TOTAL;
+  let verdict="";
+  if(pct>=0.9)verdict="Exceptional memory. Well done.";
+  else if(pct>=0.7)verdict="Strong performance. Keep training.";
+  else if(pct>=0.5)verdict="Good effort. Practice sharpens the mind.";
+  else verdict="Keep at it — memory improves with repetition.";
+  document.getElementById("score-verdict").textContent=verdict;
+
+  document.getElementById("breakdown-grid").innerHTML=state.scores.map((s,i)=>`
+    <div class="breakdown-tile">
+      <div class="breakdown-score">${s.score}/${s.total}</div>
+      <div class="breakdown-label">Stage ${STAGE_NAMES[i]}</div>
+    </div>`).join("");
+
+  const lb=getLeaderboard();
+  lb.push({name:state.playerName,score:total,date:Date.now()});
+  lb.sort((a,b)=>b.score-a.score);
+  saveLeaderboard(lb.slice(0,20));
+  renderLeaderboard("lb-final");
+  show("final-screen");
+}
+
+function resetGame(){
+  document.getElementById("player-name").value="";
+  state.stage=0;
+  updateDots();
+  renderLeaderboard("lb-home");
+  show("start-screen");
+}
+
+renderLeaderboard("lb-home");
+</script>
+</body>
+</html>
