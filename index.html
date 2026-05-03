@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kim's Game</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #f5f0e8;
@@ -13,15 +15,11 @@
     --gold: #8a6a1a;
     --gold-light: #6b4f10;
     --cream: #2c2416;
-    --muted: #6b6b60;
-    --danger: #c0392b;
-    --success: #1a6b4a;
-    --success-bg: #0d2e20;
-    --danger-bg: #2e0d0d;
+    --muted: #7a6a50;
+    --border: rgba(100,80,20,0.15);
+    --border-light: rgba(100,80,20,0.3);
     --text: #2c2416;
---text-muted: #7a6a50;
---border: rgba(100,80,20,0.15);
---border-light: rgba(100,80,20,0.3);
+    --text-muted: #7a6a50;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,136 +32,58 @@
     overflow-x: hidden;
   }
 
-  /* Decorative background */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%);
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(138,106,26,0.07) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
 
-  .container {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    position: relative;
-    z-index: 1;
-  }
+  .container { max-width: 680px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1; }
 
-  /* Header */
   header {
     text-align: center;
     padding: 3rem 0 2rem;
     border-bottom: 0.5px solid var(--border);
     margin-bottom: 2rem;
-    position: relative;
   }
 
-  .crown {
-    font-size: 28px;
-    margin-bottom: 0.5rem;
-    display: block;
-    filter: drop-shadow(0 0 12px rgba(201,168,76,0.5));
-  }
+  .crown { font-size: 28px; margin-bottom: 0.5rem; display: block; filter: drop-shadow(0 0 8px rgba(138,106,26,0.3)); }
 
   header h1 {
     font-family: 'Playfair Display', serif;
     font-size: clamp(2rem, 6vw, 3.2rem);
     font-weight: 700;
-    color: var(--gold-light);
+    color: var(--gold);
     letter-spacing: 0.02em;
     line-height: 1;
     margin-bottom: 0.4rem;
   }
 
-  header p {
-    font-size: 13px;
-    color: var(--text-muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-  }
+  header p { font-size: 13px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; font-family: 'DM Mono', monospace; }
 
-  .stage-indicators {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 1.5rem;
-  }
-
-  .stage-dot {
-    width: 32px;
-    height: 3px;
-    background: var(--surface2);
-    border-radius: 2px;
-    transition: background 0.4s;
-  }
+  .stage-indicators { display: flex; gap: 8px; justify-content: center; margin-top: 1.5rem; }
+  .stage-dot { width: 32px; height: 3px; background: var(--surface2); border-radius: 2px; transition: background 0.4s; }
   .stage-dot.active { background: var(--gold); }
-  .stage-dot.done { background: var(--gold-light); opacity: 0.5; }
+  .stage-dot.done { background: var(--gold-light); opacity: 0.4; }
 
-  /* Screens */
   .screen { display: none; }
   .screen.active { display: block; animation: fadeUp 0.4s ease both; }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* Timer */
-  .timer-wrap {
-    margin-bottom: 1.5rem;
-  }
+  .timer-wrap { margin-bottom: 1.5rem; }
+  .timer-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .timer-label { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .timer-count { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: var(--gold); transition: color 0.3s; }
+  .timer-count.danger { color: #c0392b; }
+  .timer-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .timer-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 1s linear, background 0.4s; }
+  .timer-fill.danger { background: #c0392b; }
 
-  .timer-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .timer-label {
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-  }
-
-  .timer-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--gold);
-    transition: color 0.3s;
-  }
-
-  .timer-count.danger { color: #e74c3c; }
-
-  .timer-track {
-    height: 3px;
-    background: var(--surface2);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .timer-fill {
-    height: 100%;
-    background: var(--gold);
-    border-radius: 2px;
-    transition: width 1s linear, background 0.4s;
-  }
-  .timer-fill.danger { background: #e74c3c; }
-
-  /* Objects grid */
-  .objects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 8px;
-    margin-bottom: 1.5rem;
-  }
+  .objects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-bottom: 1.5rem; }
 
   .object-card {
     background: var(--surface);
@@ -171,35 +91,15 @@
     border-radius: 10px;
     padding: 14px 8px 10px;
     text-align: center;
-    transition: transform 0.2s, border-color 0.2s;
     animation: popIn 0.3s ease both;
   }
 
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.88); }
-    to { opacity: 1; transform: scale(1); }
-  }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
 
-  .object-emoji {
-    font-size: 26px;
-    display: block;
-    margin-bottom: 6px;
-  }
+  .object-emoji { font-size: 26px; display: block; margin-bottom: 6px; }
+  .object-name { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
 
-  .object-name {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.04em;
-  }
-
-  /* Answer buttons */
-  .answers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 8px;
-    margin-bottom: 1.5rem;
-  }
+  .answers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 1.5rem; }
 
   .ans-btn {
     background: var(--surface);
@@ -219,14 +119,12 @@
   }
 
   .ans-btn:hover { border-color: var(--border-light); color: var(--text); background: var(--surface2); }
-  .ans-btn.selected { border: 1.5px solid var(--gold); color: var(--gold-light); background: rgba(201,168,76,0.08); }
-  .ans-btn.correct { border-color: #1a6b4a; color: #4ecb8e; background: var(--success-bg); }
-  .ans-btn.wrong { border-color: #6b1a1a; color: #e87272; background: var(--danger-bg); }
-  .ans-btn.missed { border-color: #4a4a30; color: #a0a060; background: #1e1e10; }
-
+  .ans-btn.selected { border: 1.5px solid var(--gold); color: var(--gold); background: rgba(138,106,26,0.06); }
+  .ans-btn.correct { border-color: #1a6b4a; color: #1a6b4a; background: #e1f5ee; }
+  .ans-btn.wrong { border-color: #c0392b; color: #c0392b; background: #fceaea; }
+  .ans-btn.missed { border-color: #c8b88a; color: #a08050; background: #f5efe0; }
   .ans-emoji { font-size: 20px; }
 
-  /* Buttons */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -242,32 +140,12 @@
     letter-spacing: 0.02em;
   }
 
-  .btn-primary {
-    background: var(--gold);
-    color: #0e0e0d;
-  }
+  .btn-primary { background: var(--gold); color: #fff; }
   .btn-primary:hover { background: var(--gold-light); }
   .btn-primary:active { transform: scale(0.98); }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text-muted);
-    border: 0.5px solid var(--border);
-  }
-  .btn-ghost:hover { border-color: var(--border-light); color: var(--text); }
-
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* Input */
-  .field-label {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    display: block;
-    margin-bottom: 8px;
-  }
+  .field-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); font-family: 'DM Mono', monospace; display: block; margin-bottom: 8px; }
 
   .text-input {
     width: 100%;
@@ -286,37 +164,38 @@
   .text-input:focus { border-color: var(--gold); }
   .text-input::placeholder { color: var(--muted); }
 
-  /* Cards */
-  .card {
+  /* Age group selector */
+  .age-group-wrap { margin-bottom: 1.5rem; }
+  .age-options { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+
+  .age-btn {
     background: var(--surface);
     border: 0.5px solid var(--border);
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
+    border-radius: 10px;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
   }
 
-  .score-big {
-    font-family: 'Playfair Display', serif;
-    font-size: 3rem;
-    font-weight: 700;
-    color: var(--gold-light);
-    line-height: 1;
-  }
+  .age-btn:hover { border-color: var(--border-light); background: var(--surface2); }
+  .age-btn.selected { border: 1.5px solid var(--gold); background: rgba(138,106,26,0.06); }
 
-  .score-sub {
-    font-size: 12px;
-    font-family: 'DM Mono', monospace;
-    color: var(--text-muted);
-    margin-top: 4px;
-    letter-spacing: 0.06em;
-  }
+  .age-emoji { font-size: 22px; display: block; margin-bottom: 6px; }
+  .age-label { font-size: 13px; font-weight: 500; color: var(--text); display: block; }
+  .age-sub { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; display: block; margin-top: 2px; }
 
-  /* Stage badge */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+
+  .score-big { font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 700; color: var(--gold); line-height: 1; }
+  .score-sub { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.06em; }
+
   .stage-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(201,168,76,0.1);
+    background: rgba(138,106,26,0.08);
     border: 0.5px solid var(--border-light);
     border-radius: 20px;
     padding: 4px 12px;
@@ -326,158 +205,64 @@
     margin-bottom: 1.25rem;
   }
 
-  /* Section title */
-  .section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 18px;
-    color: var(--cream);
+  .section-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--cream); margin-bottom: 1rem; }
+
+  /* Age group insight card */
+  .insight-card {
+    background: rgba(138,106,26,0.06);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 1.25rem;
     margin-bottom: 1rem;
   }
 
+  .insight-title { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-bottom: 0.75rem; }
+
+  .insight-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .insight-label { font-size: 13px; color: var(--text-muted); }
+  .insight-val { font-size: 15px; font-weight: 500; color: var(--gold); font-family: 'DM Mono', monospace; }
+
+  .insight-bar-wrap { height: 6px; background: var(--surface2); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .insight-bar-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width 0.8s ease; }
+
+  .insight-compare { font-size: 13px; color: var(--text-muted); margin-top: 0.75rem; padding-top: 0.75rem; border-top: 0.5px solid var(--border); line-height: 1.6; }
+  .insight-compare strong { color: var(--cream); }
+
   /* Leaderboard */
-  .lb-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 0.5px solid var(--border);
-    font-size: 14px;
-  }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; }
   .lb-row:last-child { border-bottom: none; }
-
-  .lb-rank {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--text-muted);
-    width: 20px;
-    text-align: center;
-  }
-
+  .lb-rank { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); width: 20px; text-align: center; }
   .lb-rank.gold { color: var(--gold); font-weight: 500; }
+  .lb-name { flex: 1; color: var(--cream); }
+  .lb-age { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-right: 8px; }
+  .lb-score { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); }
+  .lb-empty { font-size: 13px; color: var(--text-muted); font-family: 'DM Mono', monospace; padding: 1rem 0; }
+  .lb-loading { font-size: 13px; color: var(--text-muted); font-family: 'DM Mono', monospace; padding: 1rem 0; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  .lb-name {
-    flex: 1;
-    color: var(--cream);
-    font-weight: 400;
-  }
+  .stage-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 2rem; }
+  .stage-tile { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .stage-tile-num { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--gold); line-height: 1; margin-bottom: 4px; }
+  .stage-tile-label { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; }
 
-  .lb-score {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: var(--gold);
-  }
-
-  .lb-empty {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    padding: 1rem 0;
-  }
-
-  /* Intro stage list */
-  .stage-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 2rem;
-  }
-
-  .stage-tile {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-  }
-
-  .stage-tile-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
-    color: var(--gold-light);
-    line-height: 1;
-    margin-bottom: 4px;
-  }
-
-  .stage-tile-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.06em;
-  }
-
-  .miss-alert {
-    background: rgba(201,168,76,0.06);
-    border: 0.5px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 1.25rem;
-    line-height: 1.8;
-  }
-
+  .miss-alert { background: rgba(138,106,26,0.05); border: 0.5px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.8; }
   .miss-alert strong { color: var(--cream); font-weight: 500; }
 
-  .flex-row { display: flex; gap: 10px; align-items: center; }
   .flex-between { display: flex; justify-content: space-between; align-items: center; }
-
   .row-gap { margin-bottom: 1.5rem; }
 
-  footer {
-    text-align: center;
-    padding: 2rem 0 3rem;
-    border-top: 0.5px solid var(--border);
-    margin-top: 2rem;
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.06em;
-  }
+  .breakdown-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1.5rem; }
+  .breakdown-tile { background: var(--surface2); border-radius: 8px; padding: 12px; text-align: center; }
+  .breakdown-score { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); }
+  .breakdown-label { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
 
-  /* Pulse on memorise screen */
-  .pulse-ring {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--gold);
-    margin-right: 6px;
-    animation: pulse 1.2s infinite;
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
-  }
+  .pulse-ring { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); margin-right: 6px; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
 
-  .breakdown-grid {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 8px;
-    margin-bottom: 1.5rem;
-  }
-
-  .breakdown-tile {
-    background: var(--surface2);
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-  }
-
-  .breakdown-score {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    color: var(--gold-light);
-  }
-
-  .breakdown-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    margin-top: 2px;
-  }
+  footer { text-align: center; padding: 2rem 0 3rem; border-top: 0.5px solid var(--border); margin-top: 2rem; font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; }
 </style>
 </head>
 <body>
-
 <div class="container">
   <header>
     <span class="crown">♛</span>
@@ -498,32 +283,54 @@
       <div class="stage-tile"><div class="stage-tile-num">15</div><div class="stage-tile-label">Stage II</div></div>
       <div class="stage-tile"><div class="stage-tile-num">20</div><div class="stage-tile-label">Stage III</div></div>
     </div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.8;">
-      This is a game I used to play as a boy scout! A tray of objects will be shown for <strong style="color:var(--cream)">20 seconds</strong>. Study them carefully. Then recall as many as you can in <strong style="color:var(--cream)">20 seconds</strong>. Wrong guesses deduct points — choose wisely.
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.8;">
+      A tray of objects will be shown for <strong style="color:var(--cream)">30 seconds</strong>. Study them carefully. Then recall as many as you can in <strong style="color:var(--cream)">30 seconds</strong>. Wrong guesses deduct points — choose wisely.
     </p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:2rem;line-height:1.8;">
+      Kim's Game originates from Rudyard Kipling's 1901 novel <em>Kim</em>, where the boy hero trains his memory by studying a tray of jewels. It was adopted by the <strong style="color:var(--cream)">Boy Scouts</strong> as a classic training exercise — a staple of scout camps around the world. If you played this as a scout, you'll know how surprisingly tricky it gets!
+    </p>
+
     <label class="field-label" for="player-name">Your name</label>
     <input type="text" id="player-name" class="text-input" placeholder="Enter your name..." maxlength="24" />
+
+    <div class="age-group-wrap">
+      <label class="field-label">Your age group</label>
+      <div class="age-options">
+        <div class="age-btn" onclick="selectAge(this,'below20')">
+          <span class="age-emoji">🧒</span>
+          <span class="age-label">Below 20</span>
+          <span class="age-sub">Under 20</span>
+        </div>
+        <div class="age-btn" onclick="selectAge(this,'20to50')">
+          <span class="age-emoji">🧑</span>
+          <span class="age-label">20 – 50</span>
+          <span class="age-sub">Adults</span>
+        </div>
+        <div class="age-btn" onclick="selectAge(this,'above50')">
+          <span class="age-emoji">🧓</span>
+          <span class="age-label">Above 50</span>
+          <span class="age-sub">Over 50</span>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary" onclick="startGame()" style="width:100%;justify-content:center;">Begin →</button>
 
     <div style="margin-top:2.5rem;">
-      <div class="section-title">Leaderboard</div>
-      <div class="card">
-        <div id="lb-home"></div>
-      </div>
+      <div class="section-title">Global Leaderboard</div>
+      <div class="card"><div id="lb-home"></div></div>
     </div>
   </div>
 
   <!-- MEMORISE -->
   <div id="memorise-screen" class="screen">
     <div class="flex-between row-gap">
-      <div class="stage-badge" id="mem-stage-badge">
-        <span class="pulse-ring"></span> Stage I — Memorise
-      </div>
+      <div class="stage-badge" id="mem-stage-badge"><span class="pulse-ring"></span> Stage I — Memorise</div>
     </div>
     <div class="timer-wrap">
       <div class="timer-meta">
         <span class="timer-label">Time remaining</span>
-        <span class="timer-count" id="mem-count">20</span>
+        <span class="timer-count" id="mem-count">30</span>
       </div>
       <div class="timer-track"><div class="timer-fill" id="mem-bar" style="width:100%"></div></div>
     </div>
@@ -538,7 +345,7 @@
     <div class="timer-wrap">
       <div class="timer-meta">
         <span class="timer-label">Time to answer</span>
-        <span class="timer-count" id="recall-count">20</span>
+        <span class="timer-count" id="recall-count">30</span>
       </div>
       <div class="timer-track"><div class="timer-fill" id="recall-bar" style="width:100%"></div></div>
     </div>
@@ -574,18 +381,23 @@
       <div class="score-sub" style="margin-top:8px;" id="score-verdict"></div>
     </div>
     <div class="breakdown-grid" id="breakdown-grid"></div>
-    <div class="section-title">Leaderboard</div>
-    <div class="card" style="margin-bottom:1.5rem;">
-      <div id="lb-final"></div>
-    </div>
+
+    <!-- Age group insight -->
+    <div id="age-insight-section"></div>
+
+    <div class="section-title">Global Leaderboard</div>
+    <div class="card" style="margin-bottom:1.5rem;"><div id="lb-final"></div></div>
     <button class="btn btn-primary" onclick="resetGame()" style="width:100%;justify-content:center;">Play again</button>
   </div>
+</div>
 
-</div><!-- /container -->
-
-<footer>Kim's Game &mdash; a classic memory exercise</footer>
+<footer>Kim's Game &mdash; a classic Boy Scout memory exercise</footer>
 
 <script>
+const SUPABASE_URL = "https://xaqxxpnpvejiaxwlbcuq.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhcXh4cG5wdmVqaWF4d2xiY3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3OTE2OTcsImV4cCI6MjA5MzM2NzY5N30.Z7TsW-DWUb4vYRrTPy5KwX5Axy_WbCNwQQPE2piIJWY";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const ALL_OBJECTS = [
   {name:"apple",emoji:"🍎"},{name:"key",emoji:"🔑"},{name:"scissors",emoji:"✂️"},
   {name:"pen",emoji:"🖊️"},{name:"coin",emoji:"🪙"},{name:"candle",emoji:"🕯️"},
@@ -601,180 +413,272 @@ const ALL_OBJECTS = [
   {name:"bead",emoji:"🔮"},{name:"pin",emoji:"📌"}
 ];
 
-const STAGES = [10, 15, 20];
+const STAGES = [10,15,20];
 const TOTAL = 45;
 const STAGE_NAMES = ["I","II","III"];
+const TIME = 30;
 
-let state = {
-  playerName:"",stage:0,stageObjects:[],allStageObjects:[],
-  selected:new Set(),scores:[],timer:null
+const AGE_LABELS = {
+  below20: "Below 20",
+  "20to50": "20 – 50",
+  above50: "Above 50"
 };
 
-function shuffle(arr){return[...arr].sort(()=>Math.random()-0.5);}
+const AGE_EMOJIS = {
+  below20: "🧒",
+  "20to50": "🧑",
+  above50: "🧓"
+};
 
-function getLeaderboard(){
-  try{return JSON.parse(localStorage.getItem("kimsgame_lb")||"[]");}catch{return[];}
+let state = {
+  playerName:"", ageGroup:"", stage:0,
+  stageObjects:[], allStageObjects:[],
+  selected:new Set(), scores:[], timer:null
+};
+
+function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
+
+function selectAge(el, group){
+  document.querySelectorAll(".age-btn").forEach(b=>b.classList.remove("selected"));
+  el.classList.add("selected");
+  state.ageGroup = group;
 }
-function saveLeaderboard(lb){
-  try{localStorage.setItem("kimsgame_lb",JSON.stringify(lb));}catch{}
+
+async function loadLeaderboard(id){
+  const el = document.getElementById(id);
+  el.innerHTML = '<div class="lb-loading">Loading scores...</div>';
+  try {
+    const {data, error} = await sb.from("leaderboard")
+      .select("name, score, age_group")
+      .order("score", {ascending:false})
+      .limit(10);
+    if(error || !data || !data.length){
+      el.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>';
+      return;
+    }
+    el.innerHTML = data.map((e,i) => `
+      <div class="lb-row">
+        <span class="lb-rank ${i===0?'gold':''}">${i===0?'♛':i+1}</span>
+        <span class="lb-name">${e.name}</span>
+        <span class="lb-age">${e.age_group ? AGE_EMOJIS[e.age_group]||'' : ''}</span>
+        <span class="lb-score">${e.score}/${TOTAL}</span>
+      </div>`).join("");
+  } catch(e){
+    el.innerHTML = '<div class="lb-empty">Could not load scores.</div>';
+  }
+}
+
+async function getAgeGroupStats(ageGroup){
+  try {
+    const {data, error} = await sb.from("leaderboard")
+      .select("score")
+      .eq("age_group", ageGroup);
+    if(error || !data || !data.length) return null;
+    const avg = data.reduce((a,b)=>a+b.score,0) / data.length;
+    return { avg: Math.round(avg*10)/10, count: data.length };
+  } catch(e){ return null; }
+}
+
+async function saveScore(name, score, ageGroup){
+  try {
+    await sb.from("leaderboard").insert([{
+      name, score, age_group: ageGroup,
+      created_at: new Date().toISOString()
+    }]);
+  } catch(e){ console.error("Save error", e); }
 }
 
 function updateDots(){
   STAGES.forEach((_,i)=>{
-    const d=document.getElementById("dot-"+i);
-    d.className="stage-dot";
-    if(i<state.stage)d.classList.add("done");
-    else if(i===state.stage)d.classList.add("active");
+    const d = document.getElementById("dot-"+i);
+    d.className = "stage-dot";
+    if(i < state.stage) d.classList.add("done");
+    else if(i === state.stage) d.classList.add("active");
   });
 }
 
-function renderLeaderboard(id){
-  const lb=getLeaderboard().sort((a,b)=>b.score-a.score).slice(0,8);
-  const el=document.getElementById(id);
-  if(!lb.length){el.innerHTML='<div class="lb-empty">No scores yet — be the first!</div>';return;}
-  el.innerHTML=lb.map((e,i)=>`<div class="lb-row">
-    <span class="lb-rank ${i===0?'gold':''}">${i===0?'♛':i+1}</span>
-    <span class="lb-name">${e.name}</span>
-    <span class="lb-score">${e.score}/${TOTAL}</span>
-  </div>`).join("");
-}
-
 function show(id){
-  document.querySelectorAll(".screen").forEach(s=>{s.classList.remove("active");});
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
 
 function startGame(){
-  const n=document.getElementById("player-name").value.trim();
-  state.playerName=n||"Anonymous";
-  state.stage=0;state.scores=[];
-  const pool=shuffle(ALL_OBJECTS);let used=0;
-  state.allStageObjects=STAGES.map(n=>{const s=pool.slice(used,used+n);used+=n;return s;});
+  const n = document.getElementById("player-name").value.trim();
+  if(!state.ageGroup){
+    alert("Please select your age group to continue.");
+    return;
+  }
+  state.playerName = n || "Anonymous";
+  state.stage = 0;
+  state.scores = [];
+  const pool = shuffle(ALL_OBJECTS);
+  let used = 0;
+  state.allStageObjects = STAGES.map(n=>{ const s=pool.slice(used,used+n); used+=n; return s; });
   updateDots();
   beginStage();
 }
 
 function beginStage(){
-  state.stageObjects=state.allStageObjects[state.stage];
-  state.selected=new Set();
-  const sn=STAGE_NAMES[state.stage];
-  document.getElementById("mem-stage-badge").innerHTML=`<span class="pulse-ring"></span> Stage ${sn} — Memorise`;
-  const grid=document.getElementById("objects-grid");
-  grid.innerHTML=state.stageObjects.map((o,i)=>`<div class="object-card" style="animation-delay:${i*0.04}s">
-    <span class="object-emoji">${o.emoji}</span>
-    <span class="object-name">${o.name}</span>
-  </div>`).join("");
+  state.stageObjects = state.allStageObjects[state.stage];
+  state.selected = new Set();
+  const sn = STAGE_NAMES[state.stage];
+  document.getElementById("mem-stage-badge").innerHTML = `<span class="pulse-ring"></span> Stage ${sn} — Memorise`;
+  const grid = document.getElementById("objects-grid");
+  grid.innerHTML = state.stageObjects.map((o,i)=>`
+    <div class="object-card" style="animation-delay:${i*0.04}s">
+      <span class="object-emoji">${o.emoji}</span>
+      <span class="object-name">${o.name}</span>
+    </div>`).join("");
   show("memorise-screen");
-  startTimer("mem-bar","mem-count",20,()=>startRecall());
+  startTimer("mem-bar","mem-count",TIME,()=>startRecall());
 }
 
-function startTimer(barId,countId,secs,onEnd){
+function startTimer(barId, countId, secs, onEnd){
   clearInterval(state.timer);
-  let left=secs;
-  const bar=document.getElementById(barId);
-  const count=document.getElementById(countId);
-  bar.className="timer-fill";bar.style.width="100%";
-  count.className="timer-count";count.textContent=left;
-  state.timer=setInterval(()=>{
+  let left = secs;
+  const bar = document.getElementById(barId);
+  const count = document.getElementById(countId);
+  bar.className = "timer-fill"; bar.style.width = "100%";
+  count.className = "timer-count"; count.textContent = left;
+  state.timer = setInterval(()=>{
     left--;
-    count.textContent=left;
-    bar.style.width=(left/secs*100)+"%";
-    if(left<=5){bar.classList.add("danger");count.classList.add("danger");}
-    if(left<=0){clearInterval(state.timer);onEnd();}
-  },1000);
+    count.textContent = left;
+    bar.style.width = (left/secs*100)+"%";
+    if(left <= 7){ bar.classList.add("danger"); count.classList.add("danger"); }
+    if(left <= 0){ clearInterval(state.timer); onEnd(); }
+  }, 1000);
 }
 
 function startRecall(){
-  const sn=STAGE_NAMES[state.stage];
-  document.getElementById("recall-stage-badge").textContent=`Stage ${sn} — Recall`;
-  const distractors=shuffle(ALL_OBJECTS).filter(o=>!state.stageObjects.find(s=>s.name===o.name)).slice(0,12);
-  const choices=shuffle([...state.stageObjects,...distractors]);
-  const grid=document.getElementById("answers-grid");
-  grid.innerHTML=choices.map(o=>`<button class="ans-btn" data-name="${o.name}" onclick="toggleAns(this)">
-    <span class="ans-emoji">${o.emoji}</span>${o.name}
-  </button>`).join("");
-  document.getElementById("submit-btn").disabled=false;
+  const sn = STAGE_NAMES[state.stage];
+  document.getElementById("recall-stage-badge").textContent = `Stage ${sn} — Recall`;
+  const distractors = shuffle(ALL_OBJECTS).filter(o=>!state.stageObjects.find(s=>s.name===o.name)).slice(0,12);
+  const choices = shuffle([...state.stageObjects, ...distractors]);
+  const grid = document.getElementById("answers-grid");
+  grid.innerHTML = choices.map(o=>`
+    <button class="ans-btn" data-name="${o.name}" onclick="toggleAns(this)">
+      <span class="ans-emoji">${o.emoji}</span>${o.name}
+    </button>`).join("");
+  document.getElementById("submit-btn").disabled = false;
   show("recall-screen");
-  startTimer("recall-bar","recall-count",20,()=>submitAnswers());
+  startTimer("recall-bar","recall-count",TIME,()=>submitAnswers());
 }
 
 function toggleAns(btn){
-  const n=btn.dataset.name;
-  if(state.selected.has(n)){state.selected.delete(n);btn.classList.remove("selected");}
-  else{state.selected.add(n);btn.classList.add("selected");}
+  const n = btn.dataset.name;
+  if(state.selected.has(n)){ state.selected.delete(n); btn.classList.remove("selected"); }
+  else { state.selected.add(n); btn.classList.add("selected"); }
 }
 
 function submitAnswers(){
   clearInterval(state.timer);
-  document.getElementById("submit-btn").disabled=true;
-  const correct=state.stageObjects.filter(o=>state.selected.has(o.name));
-  const wrong=[...state.selected].filter(n=>!state.stageObjects.find(o=>o.name===n));
-  const missed=state.stageObjects.filter(o=>!state.selected.has(o.name));
-  const score=Math.max(0,correct.length-wrong.length);
-  state.scores.push({correct:correct.length,wrong:wrong.length,score,total:state.stageObjects.length});
+  document.getElementById("submit-btn").disabled = true;
+  const correct = state.stageObjects.filter(o=>state.selected.has(o.name));
+  const wrong = [...state.selected].filter(n=>!state.stageObjects.find(o=>o.name===n));
+  const missed = state.stageObjects.filter(o=>!state.selected.has(o.name));
+  const score = Math.max(0, correct.length - wrong.length);
+  state.scores.push({correct:correct.length, wrong:wrong.length, score, total:state.stageObjects.length});
 
-  const sn=STAGE_NAMES[state.stage];
-  document.getElementById("result-badge").textContent=`Stage ${sn} result`;
-  document.getElementById("stage-score-display").textContent=score;
-  document.getElementById("stage-total-display").textContent=state.stageObjects.length;
+  const sn = STAGE_NAMES[state.stage];
+  document.getElementById("result-badge").textContent = `Stage ${sn} result`;
+  document.getElementById("stage-score-display").textContent = score;
+  document.getElementById("stage-total-display").textContent = state.stageObjects.length;
 
-  if(missed.length){
-    document.getElementById("miss-section").innerHTML=`<div class="miss-alert"><strong>You missed:</strong> ${missed.map(o=>o.emoji+" "+o.name).join("  ·  ")}</div>`;
-  } else {
-    document.getElementById("miss-section").innerHTML=`<div class="miss-alert" style="color:#4ecb8e;border-color:#1a6b4a;">Perfect recall on this stage!</div>`;
-  }
+  document.getElementById("miss-section").innerHTML = missed.length
+    ? `<div class="miss-alert"><strong>You missed:</strong> ${missed.map(o=>o.emoji+" "+o.name).join("  ·  ")}</div>`
+    : `<div class="miss-alert" style="color:#1a6b4a;border-color:#1a6b4a;">Perfect recall on this stage!</div>`;
 
-  const ra=document.getElementById("result-answers");
-  const correctCards=state.stageObjects.map(o=>`<div class="ans-btn ${state.selected.has(o.name)?'correct':'missed'}"><span class="ans-emoji">${o.emoji}</span>${o.name}</div>`);
-  const wrongCards=wrong.map(n=>{const obj=ALL_OBJECTS.find(o=>o.name===n);return`<div class="ans-btn wrong"><span class="ans-emoji">${obj?obj.emoji:""}</span>${n}</div>`;});
-  ra.innerHTML=[...correctCards,...wrongCards].join("");
+  const correctCards = state.stageObjects.map(o=>`<div class="ans-btn ${state.selected.has(o.name)?'correct':'missed'}"><span class="ans-emoji">${o.emoji}</span>${o.name}</div>`);
+  const wrongCards = wrong.map(n=>{ const obj=ALL_OBJECTS.find(o=>o.name===n); return`<div class="ans-btn wrong"><span class="ans-emoji">${obj?obj.emoji:""}</span>${n}</div>`; });
+  document.getElementById("result-answers").innerHTML = [...correctCards,...wrongCards].join("");
 
-  const nextBtn=document.getElementById("next-btn");
-  if(state.stage<2){nextBtn.textContent="Next stage →";}
-  else{nextBtn.textContent="See final score";}
+  document.getElementById("next-btn").textContent = state.stage < 2 ? "Next stage →" : "See final score";
   show("result-screen");
 }
 
 function nextStage(){
   state.stage++;
   updateDots();
-  if(state.stage<3){beginStage();}else{showFinal();}
+  if(state.stage < 3){ beginStage(); } else { showFinal(); }
 }
 
-function showFinal(){
-  const total=state.scores.reduce((a,b)=>a+b.score,0);
-  document.getElementById("total-score-display").textContent=`${total} / ${TOTAL}`;
-  const pct=total/TOTAL;
-  let verdict="";
-  if(pct>=0.9)verdict="Exceptional memory. Well done.";
-  else if(pct>=0.7)verdict="Strong performance. Keep training.";
-  else if(pct>=0.5)verdict="Good effort. Practice sharpens the mind.";
-  else verdict="Keep at it — memory improves with repetition.";
-  document.getElementById("score-verdict").textContent=verdict;
+async function showFinal(){
+  const total = state.scores.reduce((a,b)=>a+b.score, 0);
+  document.getElementById("total-score-display").textContent = `${total} / ${TOTAL}`;
 
-  document.getElementById("breakdown-grid").innerHTML=state.scores.map((s,i)=>`
+  const pct = total/TOTAL;
+  let verdict = "";
+  if(pct >= 0.9) verdict = "Exceptional memory. Well done.";
+  else if(pct >= 0.7) verdict = "Strong performance. Keep training.";
+  else if(pct >= 0.5) verdict = "Good effort. Practice sharpens the mind.";
+  else verdict = "Keep at it — memory improves with repetition.";
+  document.getElementById("score-verdict").textContent = verdict;
+
+  document.getElementById("breakdown-grid").innerHTML = state.scores.map((s,i)=>`
     <div class="breakdown-tile">
       <div class="breakdown-score">${s.score}/${s.total}</div>
       <div class="breakdown-label">Stage ${STAGE_NAMES[i]}</div>
     </div>`).join("");
 
-  const lb=getLeaderboard();
-  lb.push({name:state.playerName,score:total,date:Date.now()});
-  lb.sort((a,b)=>b.score-a.score);
-  saveLeaderboard(lb.slice(0,20));
-  renderLeaderboard("lb-final");
+  // Save score first
+  await saveScore(state.playerName, total, state.ageGroup);
+
+  // Fetch age group stats after saving
+  const stats = await getAgeGroupStats(state.ageGroup);
+  const ageLabel = AGE_LABELS[state.ageGroup] || state.ageGroup;
+  const ageEmoji = AGE_EMOJIS[state.ageGroup] || "";
+
+  const insightSection = document.getElementById("age-insight-section");
+  if(stats){
+    const avgPct = Math.round((stats.avg/TOTAL)*100);
+    const yourPct = Math.round((total/TOTAL)*100);
+    const diff = total - stats.avg;
+    const diffText = diff > 0
+      ? `<strong>+${Math.abs(diff).toFixed(1)} above</strong> the group average`
+      : diff < 0
+      ? `<strong>${Math.abs(diff).toFixed(1)} below</strong> the group average`
+      : `exactly <strong>at</strong> the group average`;
+
+    insightSection.innerHTML = `
+      <div class="insight-card" style="margin-bottom:1rem;">
+        <div class="insight-title">${ageEmoji} Age group insight — ${ageLabel}</div>
+        <div class="insight-row">
+          <span class="insight-label">Your score</span>
+          <span class="insight-val">${total} / ${TOTAL}</span>
+        </div>
+        <div class="insight-bar-wrap"><div class="insight-bar-fill" style="width:${yourPct}%"></div></div>
+        <div class="insight-row" style="margin-top:10px;">
+          <span class="insight-label">Group average</span>
+          <span class="insight-val">${stats.avg} / ${TOTAL}</span>
+        </div>
+        <div class="insight-bar-wrap"><div class="insight-bar-fill" style="width:${avgPct}%;opacity:0.45"></div></div>
+        <div class="insight-compare">
+          Based on <strong>${stats.count} player${stats.count>1?'s':''}</strong> in your age group, you scored ${diffText}.
+        </div>
+      </div>`;
+  } else {
+    insightSection.innerHTML = `
+      <div class="insight-card" style="margin-bottom:1rem;">
+        <div class="insight-title">${ageEmoji} Age group — ${ageLabel}</div>
+        <div class="insight-compare">You are the first player in this age group! Play again to see how you compare.</div>
+      </div>`;
+  }
+
   show("final-screen");
+  await loadLeaderboard("lb-final");
 }
 
 function resetGame(){
-  document.getElementById("player-name").value="";
-  state.stage=0;
+  document.getElementById("player-name").value = "";
+  document.querySelectorAll(".age-btn").forEach(b=>b.classList.remove("selected"));
+  state.ageGroup = "";
+  state.stage = 0;
   updateDots();
-  renderLeaderboard("lb-home");
+  loadLeaderboard("lb-home");
   show("start-screen");
 }
 
-renderLeaderboard("lb-home");
+loadLeaderboard("lb-home");
 </script>
 </body>
 </html>
